@@ -3,30 +3,12 @@ import random
 import time
 
 from openrazer.client import DeviceManager
+from razer_utils import gradient_linear, rgb_devices
 
 device_manager = DeviceManager()
 
-print("Found {} Razer devices".format(len(device_manager.devices)))
-
-devices = device_manager.devices
-for device in devices:
-    if not device.fx.advanced:
-        print("Skipping device " + device.name + " (" + device.serial + ")")
-        devices.remove(device)
-
-# Disable daemon effect syncing.
-# Without this, the daemon will try to set the lighting effect to every device.
 device_manager.sync_effects = False
 device_manager.turn_off_on_screensaver = False
-
-def gradient_linear(start, end, n):
-    colors = []
-
-    for color in range(n):
-        new_color = (int(start[j] + (float(color) / (n - 1)) * (end[j] - start[j])) for j in range(3))
-        colors.append(tuple(new_color))
-
-    return colors
 
 beer_color = (242, 142, 28)
 foam_color = (246, 246, 227)
@@ -38,8 +20,6 @@ class Bubble:
         self.y = rows - 1
         self.radius = random.choices([0, 1, 2], [0.5, 0.4, 0.1], k = 1)[0]
         self.colors = gradient_linear(foam_color, dark_color, self.radius + 1) if self.radius > 0 else foam_color
-
-        # print(self.x, self.y, self.radius)
 
     def draw(self, device):
         if self.radius == 0:
@@ -53,7 +33,6 @@ class Bubble:
         self.y = self.y - 1
 
     def circle(self, device):
-        # print(self.x, self.y)
         rows = device.fx.advanced.rows
         cols = device.fx.advanced.cols
         step = 60 / self.radius
@@ -65,7 +44,6 @@ class Bubble:
             py = int(round(self.y + self.radius * math.sin(theta)))
             
             if px >= 0 and px < cols and py >= 0 and py < rows:
-                # print('adding', px, py)
                 points.append({
                     'x': px,
                     'y': py,
@@ -79,7 +57,7 @@ class Bubble:
     def is_dead(self):
         return self.y <= 2
 
-for device in devices:
+for device in rgb_devices(device_manager):
     rows = device.fx.advanced.rows
     cols = device.fx.advanced.cols
     foam = rows // 3

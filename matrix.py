@@ -3,31 +3,12 @@ import random
 import time
 
 from openrazer.client import DeviceManager
+from razer_utils import gradient_linear, rgb_devices
 
 device_manager = DeviceManager()
 
-print("Found {} Razer devices".format(len(device_manager.devices)))
-
-devices = device_manager.devices
-for device in devices:
-    if not device.fx.advanced:
-        print("Skipping device " + device.name + " (" + device.serial + ")")
-        devices.remove(device)
-
-# disable daemon effect syncing.
-# without this, the daemon will try to set the lighting effect to every device.
 device_manager.sync_effects = False
-# disable turning the effect off when screensaver is active
 device_manager.turn_off_on_screensaver = False
-
-def gradient_linear(start, end, n):
-    colors = []
-
-    for color in range(n):
-        new_color = (int(start[j] + (float(color) / (n - 1)) * (end[j] - start[j])) for j in range(3))
-        colors.append(tuple(new_color))
-
-    return colors
 
 class Line:
     def __init__(self, max_row, layer):
@@ -62,7 +43,7 @@ class Line:
     def is_out_of_bounds(self, device):
         return self.x - self.length > device.fx.advanced.cols
 
-for device in devices:
+for device in rgb_devices(device_manager):
     rows = device.fx.advanced.rows
     layer_count = 3
 

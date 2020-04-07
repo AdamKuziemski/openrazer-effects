@@ -3,21 +3,12 @@ import time
 from colorsys import rgb_to_hsv
 from opensimplex import OpenSimplex
 from openrazer.client import DeviceManager
+from razer_utils import gradient_linear, neighboring_keys, rgb_devices
 
 device_manager = DeviceManager()
 simplex = OpenSimplex()
 noise_step = 0.16
 
-print("Found {} Razer devices".format(len(device_manager.devices)))
-
-devices = device_manager.devices
-for device in devices:
-    if not device.fx.advanced:
-        print("Skipping device " + device.name + " (" + device.serial + ")")
-        devices.remove(device)
-
-# Disable daemon effect syncing.
-# Without this, the daemon will try to set the lighting effect to every device.
 device_manager.sync_effects = False
 device_manager.turn_off_on_screensaver = False
 
@@ -25,19 +16,7 @@ def clamp(color):
     c = int(color)
     return c if c >= 0 else 0
 
-# returns n colors between start (tuple) and end (tuple)
-def gradient_linear(start, end, n):
-    colors = []
-
-    for color in range(n):
-        new_color = (int(start[j] + (float(color) / (n - 1)) * (end[j] - start[j])) for j in range(3))
-        colors.append(tuple(new_color))
-
-    return colors
-
-# generate a gradient between the colors
-# then spread it into two dimensions to reach black
-def gradient_2d(start, end, n):
+def gradient_to_black(start, end, n):
     color_grid = list(map(
         lambda color: gradient_linear(color, (0, 0, 0), n),
         gradient_linear(start, end, n)
@@ -47,20 +26,7 @@ def gradient_2d(start, end, n):
     for i in range(n):
         color_grid[i].pop()
 
-    # print('gradient colors')
-    # for r in range(n):
-    #     for c in range(len(color_grid[r])):
-    #         print('#%02x%02x%02x' % color_grid[r][c])
-
     return color_grid
-
-def neighboring_keys(device, row, col):
-    return [
-        device.fx.advanced.matrix[row, col + 1],
-        device.fx.advanced.matrix[row, col - 1],
-        device.fx.advanced.matrix[row + 1, col],
-        device.fx.advanced.matrix[row - 1, col]
-    ]
 
 def cooling_map(rows, cols, start):
     global noise_step
@@ -103,7 +69,7 @@ def draw_fire(device, fire_grid, cool):
 
     device.fx.advanced.draw()
 
-for device in devices:
+for device in rgb_devices(device_manager):
     # any pair of colors will do:
     # hot_color = (255, 123, 0) # orange
     # cold_color = (255, 0, 0) # red
@@ -119,7 +85,7 @@ for device in devices:
     # full brightness is hard on the eyes
     device.brightness = 35
 
-    fire_grid = gradient_2d(hot_color, cold_color, rows)
+    fire_grid = gradient_to_black(hot_color, cold_color, rows)
 
     device.fx.advanced.matrix.reset()
     device.fx.advanced.draw()
